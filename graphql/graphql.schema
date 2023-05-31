@@ -1,0 +1,17 @@
+type PostMetadata @model @auth(rules: [{allow: owner}]) {
+  postMetadataReference: ID! @primaryKey
+  title: String!
+  post: Post @belongsTo
+}
+
+type Post @model @auth(rules: [{allow: owner}]) {
+  postReference: ID! @primaryKey
+  title: String!
+  comments: [Comment] @hasMany
+  metadata: PostMetadata @hasOne
+}
+
+type Comment @model @auth(rules: [{allow: owner}]) {
+  commentReference: ID! @primaryKey
+  title: String!
+}
