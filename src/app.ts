@@ -1,13 +1,14 @@
 import { AuthTransformer } from "@aws-amplify/graphql-auth-transformer";
 import { DefaultValueTransformer } from "@aws-amplify/graphql-default-value-transformer";
-import { PrimaryKeyTransformer } from "@aws-amplify/graphql-index-transformer";
+import { IndexTransformer, PrimaryKeyTransformer } from "@aws-amplify/graphql-index-transformer";
 import { ModelTransformer } from "@aws-amplify/graphql-model-transformer";
-import { BelongsToTransformer, HasManyTransformer, HasOneTransformer } from "@aws-amplify/graphql-relational-transformer";
+import { BelongsToTransformer, HasManyTransformer, HasOneTransformer, ManyToManyTransformer } from "@aws-amplify/graphql-relational-transformer";
 import { GraphQLTransform } from "@aws-amplify/graphql-transformer-core";
 import { AppSyncAuthConfiguration, FeatureFlagProvider } from "@aws-amplify/graphql-transformer-interfaces";
 import path from "path";
 import * as fs from 'fs';
 import * as glob from 'glob';
+import { FunctionTransformer } from "@aws-amplify/graphql-function-transformer";
 
 const SCHEMA_PATH = './graphql/';
 const OUTPUT_PATH = './output/';
@@ -45,16 +46,24 @@ const authConfig: AppSyncAuthConfiguration = {
   additionalAuthenticationProviders: [],
 };
 
+const authTransformer = new AuthTransformer();
+const modelTransformer = new ModelTransformer();
+const indexTransformer = new IndexTransformer();
+const hasOneTransformer = new HasOneTransformer();
+
 const transformer = new GraphQLTransform({
   authConfig,
   transformers: [
-    new ModelTransformer(),
+    modelTransformer,
     new PrimaryKeyTransformer(),
-    new HasOneTransformer(),
+    indexTransformer,
+    hasOneTransformer,
     new HasManyTransformer(),
     new BelongsToTransformer(),
-    new AuthTransformer(),
     new DefaultValueTransformer(),
+    new ManyToManyTransformer(modelTransformer, indexTransformer, hasOneTransformer, authTransformer),
+    authTransformer,
+    new FunctionTransformer(),
   ],
   featureFlags,
 });
