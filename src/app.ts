@@ -81,17 +81,19 @@ if (fs.existsSync(schemaFilePath)) {
 
 const out = transformer.transform(fullSchema);
 
-console.log("=========== BEGIN SCHEMA ===========");
+if (!fs.existsSync(OUTPUT_PATH)) {
+  console.log(OUTPUT_PATH + " doesn't exist. Creating.");
+  fs.mkdirSync(OUTPUT_PATH, { recursive: true });
+}
+
+console.log("Writing: " + path.join(OUTPUT_PATH, 'graphql.schema'));
 fs.writeFileSync(path.join(OUTPUT_PATH, 'graphql.schema'), out.schema, {
   flag: 'w',
 });
-console.log("=========== END SCHEMA ===========");
 
-console.log("=========== BEGIN RESOLVERS ===========");
 for (const key in out.resolvers) {
-  console.log(key);
+  console.log("Writing: " + path.join(OUTPUT_PATH, key));
   fs.writeFileSync(path.join(OUTPUT_PATH, key), out.resolvers[key], {
     flag: 'w',
   });
 }
-console.log("=========== END RESOLVERS ===========");
