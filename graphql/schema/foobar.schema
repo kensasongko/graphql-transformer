@@ -1,0 +1,9 @@
+type Foo @model {
+  id: ID!
+  bars: [Bar] @manyToMany(relationName: "FooBar")
+}
+
+type Bar @model {
+  id: ID!
+  foos: [Foo] @manyToMany(relationName: "FooBar")
+}

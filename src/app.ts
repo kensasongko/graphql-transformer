@@ -90,10 +90,10 @@ if (fs.existsSync(schemaFilePath)) {
 
 const out = transformer.transform(fullSchema);
 
-if (!fs.existsSync(OUTPUT_PATH)) {
-  console.log(OUTPUT_PATH + " doesn't exist. Creating.");
-  fs.mkdirSync(OUTPUT_PATH, { recursive: true });
+if (fs.existsSync(OUTPUT_PATH)) {
+  fs.rmSync(OUTPUT_PATH, { recursive: true, force: true });
 }
+fs.mkdirSync(OUTPUT_PATH, { recursive: true });
 
 console.log("Writing: " + path.join(OUTPUT_PATH, 'graphql.schema'));
 fs.writeFileSync(path.join(OUTPUT_PATH, 'graphql.schema'), out.schema, {
