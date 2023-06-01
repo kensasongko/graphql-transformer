@@ -43,7 +43,12 @@ const authConfig: AppSyncAuthConfiguration = {
   defaultAuthentication: {
     authenticationType: 'AMAZON_COGNITO_USER_POOLS',
   },
-  additionalAuthenticationProviders: [],
+  additionalAuthenticationProviders: [{
+    authenticationType: 'API_KEY',
+    apiKeyConfig: { 
+      apiKeyExpirationDays: 365,
+    }
+  }],
 };
 
 const authTransformer = new AuthTransformer();
