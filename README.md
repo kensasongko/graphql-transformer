@@ -1,4 +1,4 @@
-# graphql-transformer
+# amplify-graphql-transformer
 
 ```
 tsc
