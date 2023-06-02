@@ -55,7 +55,7 @@ const generateResolver = (tableName: string, fieldName: string, typeName: string
       $util.qr($ctx.stash.metadata.put("dataSourceType", "${dataSource}"))
       $util.qr($ctx.stash.put("tableName", "${tableName}"))
       $util.toJson({})
-  \`)
+  \`),
     pipelineConfig: [${typeName}_${fieldName}AuthFunction],
     responseMappingTemplate: appsync.MappingTemplate.fromString('$util.toJson($ctx.prev.result)')
   });`);
