@@ -17,8 +17,7 @@ import {
   FeatureFlagProvider,
 } from "@aws-amplify/graphql-transformer-interfaces";
 import path from "path";
-import * as fs from "fs";
-import * as glob from "glob";
+import * as fs from "fs-extra";
 import { FunctionTransformer } from "@aws-amplify/graphql-function-transformer";
 
 const SCHEMA_PATH = "./graphql/";
@@ -35,7 +34,7 @@ const featureFlags: FeatureFlagProvider = {
     return false;
   },
   getNumber: (
-    featureName: string,
+    _: string,
     defaultValue: number | undefined
   ): number => {
     if (defaultValue !== undefined) {
@@ -45,7 +44,7 @@ const featureFlags: FeatureFlagProvider = {
     }
   },
   getObject: (
-    featureName: string,
+    _: string,
     defaultValue: object | undefined
   ): object => {
     if (defaultValue !== undefined) {
@@ -124,9 +123,16 @@ if (fs.existsSync(schemaFilePath)) {
 const out = transformer.transform(fullSchema);
 
 if (fs.existsSync(OUTPUT_PATH)) {
-  fs.rmSync(OUTPUT_PATH, { recursive: true, force: true });
+  const stats = fs.statSync(schemaDirectoryPath);
+  if (stats.isDirectory()) {
+    fs.emptyDirSync(OUTPUT_PATH);
+  } else {
+    fs.rmSync(OUTPUT_PATH);
+    fs.mkdirSync(OUTPUT_PATH, { recursive: true });
+  }
+} else {
+  fs.mkdirSync(OUTPUT_PATH, { recursive: true });
 }
-fs.mkdirSync(OUTPUT_PATH, { recursive: true });
 
 console.log("Writing: " + path.join(OUTPUT_PATH, "graphql.schema"));
 fs.writeFileSync(path.join(OUTPUT_PATH, "graphql.schema"), out.schema, {
