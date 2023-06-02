@@ -27,11 +27,12 @@ const SCHEMA_FILE_NAME = "graphql.schema";
 const SCHEMA_DIRECTORY_NAME = "schema";
 
 const featureFlags: FeatureFlagProvider = {
-  getBoolean: (value: string): boolean => {
-    if (value === "respectPrimaryKeyAttributesOnConnectionField") {
+  getBoolean(_: string, defaultValue: boolean | undefined) {
+    if (defaultValue !== undefined) {
+      return defaultValue;
+    } else {
       return true;
     }
-    return false;
   },
   getNumber: (
     _: string,
