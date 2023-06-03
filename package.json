@@ -18,6 +18,7 @@
     "@aws-amplify/graphql-transformer-interfaces": "^2.2.0",
     "@types/fs-extra": "^11.0.1",
     "@types/node": "^20.2.5",
+    "aws-cdk-lib": "^2.82.0",
     "constructs": "^10.2.38",
     "fs-extra": "^11.1.1",
     "glob": "^10.2.6",
