@@ -1,4 +1,4 @@
-import { AuthTransformer } from "@aws-amplify/graphql-auth-transformer";
+import { AuthTransformer, NONE_DS } from "@aws-amplify/graphql-auth-transformer";
 import { DefaultValueTransformer } from "@aws-amplify/graphql-default-value-transformer";
 import {
   IndexTransformer,
@@ -11,12 +11,12 @@ import {
   HasOneTransformer,
   ManyToManyTransformer,
 } from "@aws-amplify/graphql-relational-transformer";
-import { GraphQLTransform } from "@aws-amplify/graphql-transformer-core";
+import { ConflictHandlerType, GraphQLTransform } from "@aws-amplify/graphql-transformer-core";
 import {
   AppSyncAuthConfiguration,
   FeatureFlagProvider,
 } from "@aws-amplify/graphql-transformer-interfaces";
-import path from "path";
+import * as path from "path";
 import * as fs from "fs-extra";
 import { FunctionTransformer } from "@aws-amplify/graphql-function-transformer";
 import { Duration, RemovalPolicy, Stack, StackProps } from "aws-cdk-lib";
@@ -25,6 +25,7 @@ import { DeploymentResources } from "@aws-amplify/graphql-transformer-interfaces
 import {
   AppsyncFunction,
   AuthorizationType,
+  BaseDataSource,
   DynamoDbDataSource,
   GraphqlApi,
   MappingTemplate,
@@ -41,6 +42,8 @@ import {
 import { Role, ServicePrincipal } from "aws-cdk-lib/aws-iam";
 import { AttributeType, Table } from "aws-cdk-lib/aws-dynamodb";
 
+const TYPE_NAMES = ["Subscription", "Mutation", "Query"];
+
 export interface SchemaTransformerStackProps extends StackProps {
   schemaDir: string;
   schemaSingleFileName: string;
@@ -49,23 +52,16 @@ export interface SchemaTransformerStackProps extends StackProps {
   userPool?: IUserPool;
 }
 
-const StackPropsDefaults: SchemaTransformerStackProps = {
-  schemaDir: "./graphql",
-  schemaSingleFileName: "graphql.schema",
-  schemaMultiDirName: "schema",
-  outDir: "./output",
-};
-
 export class SchemaTransformerStack extends Stack {
   public props: SchemaTransformerStackProps;
-  public TYPE_NAMES = ["Subscription", "Mutation", "Query"];
   public transformer: GraphQLTransform;
   public stacks: Record<string, Stack>;
   public api: GraphqlApi;
-  public dataSources: Record<string, DynamoDbDataSource>;
+  public dataSources: Record<string, BaseDataSource>;
   public tables: Record<string, Table>;
   public functions: Record<string, AppsyncFunction>;
   public resolvers: Record<string, Resolver>;
+  public subcriptionAuthFunctions: Record<string, AppsyncFunction>;
 
   constructor(
     scope: Construct,
@@ -73,7 +69,7 @@ export class SchemaTransformerStack extends Stack {
     props: SchemaTransformerStackProps
   ) {
     super(scope, id, props);
-    this.props = { ...props, ...StackPropsDefaults };
+    this.props = props;
     if (this.props.userPool === undefined) {
       this.props.userPool = this.createCognitoUserPool();
     }
@@ -84,11 +80,19 @@ export class SchemaTransformerStack extends Stack {
     const fullSchema = this.getSchema();
     const out = this.transformer.transform(fullSchema);
     this.saveSchema(out);
+    this.saveVtls(out);
+
+    this.stacks = {};
+    this.dataSources = {};
+    this.tables = {};
+    this.functions = {};
+    this.resolvers = {};
+    this.subcriptionAuthFunctions = {};
 
     this.api = new GraphqlApi(this, "test_api", {
       name: "TestApi",
       schema: SchemaFile.fromAsset(
-        path.join(this.props.outDir, "schema/schema.graphql")
+        path.join(this.props.outDir, "graphql.schema")
       ),
       authorizationConfig: {
         defaultAuthorization: {
@@ -100,20 +104,16 @@ export class SchemaTransformerStack extends Stack {
         },
       },
     });
-
-    this.stacks = {};
-    this.dataSources = {};
-    this.tables = {};
-    this.functions = {};
-    this.resolvers = {};
+    this.dataSources[NONE_DS] = this.api.addNoneDataSource("none");
 
     for (const stackKey in out.stacks) {
       const stack = out.stacks[stackKey];
       this.stacks[stackKey] = new Stack(this, `${stackKey}Stack`, this.props);
       for (const resourceKey in stack.Resources) {
         const resource = stack.Resources[resourceKey];
+        console.log(resource.Type);
         switch (resource.Type) {
-          case "AWS::AppSync::Table":
+          case "AWS::DynamoDB::Table":
             this.tables[stackKey] = this.createTable(this, stackKey, resource);
             break;
           case "AWS::AppSync::DataSource":
@@ -126,10 +126,12 @@ export class SchemaTransformerStack extends Stack {
           case "AWS::AppSync::Resolver":
             const fieldName = resource.Properties.FieldName;
             const typeName = resource.Properties.TypeName;
+            //console.log(`${typeName}_${fieldName}`);
             this.resolvers[`${typeName}${fieldName}`] = this.generateResolver(
               this.stacks[stackKey],
               this.api,
               this.dataSources[stackKey],
+              this.dataSources[NONE_DS],
               stackKey,
               fieldName,
               typeName
@@ -143,25 +145,31 @@ export class SchemaTransformerStack extends Stack {
   generateResolver(
     context: Construct,
     api: GraphqlApi,
-    dataSource: DynamoDbDataSource,
-    tableName: string,
+    dataSource: BaseDataSource,
+    noneDataSource: BaseDataSource,
+    stackKey: string,
     fieldName: string,
     typeName: string
   ): Resolver {
     let auth = false;
     let dataSourceType = "NONE";
     const functions: AppsyncFunction[] = [];
-    if (this.TYPE_NAMES.indexOf(typeName) !== -1) {
+    if (TYPE_NAMES.indexOf(typeName) !== -1) {
       auth = true;
       // TODO AUTH
-      functions.push(
-        this.generateAuthFunction(context, api, fieldName, typeName)
-      );
+      if (typeName === "Subscription") {
+        if (this.subcriptionAuthFunctions[stackKey] === undefined) {
+          this.subcriptionAuthFunctions[stackKey] = this.generateAuthFunction(context, api, fieldName, typeName, noneDataSource)
+        }
+        functions.push(this.subcriptionAuthFunctions[stackKey]);
+      } else {
+        functions.push(this.generateAuthFunction(context, api, fieldName, typeName, noneDataSource));
+      }
+
       if (typeName === "MUTATION" || typeName === "SUBSCRIPTION") {
         dataSourceType = "AMAZON_DYNAMODB";
       }
     }
-    // TODO: Subscriptions use the very same auth VTL
 
     // TODO: DataResolverFunction - done-ish, but it should be editable and using JS Resolver instead.
     functions.push(
@@ -176,15 +184,15 @@ export class SchemaTransformerStack extends Stack {
 
     const resolver = new Resolver(context, `${typeName}${fieldName}Resolver`, {
       api,
-      typeName: "${typeName}",
-      fieldName: "${fieldName}",
+      typeName,
+      fieldName,
       requestMappingTemplate: MappingTemplate.fromString(`
         $util.qr($ctx.stash.put("typeName", "${typeName}"))
         $util.qr($ctx.stash.put("fieldName", "${fieldName}"))
         $util.qr($ctx.stash.put("conditions", []))
         $util.qr($ctx.stash.put("metadata", {}))
         $util.qr($ctx.stash.metadata.put("dataSourceType", "${dataSourceType}"))
-        $util.qr($ctx.stash.put("tableName", "${tableName}"))
+        $util.qr($ctx.stash.put("tableName", "${stackKey}"))
         $util.toJson({})
       `),
       pipelineConfig: functions,
@@ -200,7 +208,7 @@ export class SchemaTransformerStack extends Stack {
   generateDataResolverFunction(
     context: Construct,
     api: GraphqlApi,
-    dataSource: DynamoDbDataSource,
+    dataSource: BaseDataSource,
     fieldName: string,
     typeName: string
   ): AppsyncFunction {
@@ -227,7 +235,8 @@ export class SchemaTransformerStack extends Stack {
     context: Construct,
     api: GraphqlApi,
     fieldName: string,
-    typeName: string
+    typeName: string,
+    dataSource: BaseDataSource,
   ): AppsyncFunction {
     const fn = new AppsyncFunction(
       context,
@@ -235,7 +244,7 @@ export class SchemaTransformerStack extends Stack {
       {
         name: `${typeName}_${fieldName}_auth1_function`,
         api,
-        dataSource: api.addNoneDataSource("none"),
+        dataSource,
         requestMappingTemplate: MappingTemplate.fromFile(
           path.join(
             this.props.outDir,
@@ -289,12 +298,12 @@ export class SchemaTransformerStack extends Stack {
       },
       removalPolicy: RemovalPolicy.DESTROY,
     });
-    const cognitoRole = new Role(this, "todo_auth_role", {
+    const cognitoRole = new Role(this, "dummy_auth_role", {
       assumedBy: new ServicePrincipal("cognito-idp.amazonaws.com"),
     });
     cognito.grant(cognitoRole, "cognito-idp:AdminCreateUser");
-    cognito.addClient("todo-client", {
-      userPoolClientName: "todo-client",
+    cognito.addClient("dummy-client", {
+      userPoolClientName: "dummy-client",
       authFlows: {
         userSrp: true,
         userPassword: true,
@@ -337,7 +346,7 @@ export class SchemaTransformerStack extends Stack {
         fs.rmSync(this.props.outDir);
       }
     }
-    fs.mkdirSync(path.join(this.props.outDir, "vtls"), { recursive: true });
+    fs.mkdirSync(this.props.outDir, { recursive: true });
   }
 
   getSchema(): string {
@@ -444,6 +453,17 @@ export class SchemaTransformerStack extends Stack {
         authTransformer,
         new FunctionTransformer(),
       ],
+      filepaths: {
+        getBackendDirPath: () => "",
+        findProjectRoot: () => "",
+        getCurrentCloudBackendDirPath: () => "",
+      },
+      resolverConfig: {
+        project: {
+          ConflictDetection: 'VERSION',
+          ConflictHandler: ConflictHandlerType.AUTOMERGE,
+        },
+      },
       featureFlags,
     });
 
