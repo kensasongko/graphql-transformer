@@ -56,17 +56,8 @@ export interface SchemaTransformerStackProps extends StackProps {
 
 export class SchemaTransformerStack extends Stack {
   public props: SchemaTransformerStackProps;
-  public transformer: GraphQLTransform;
   public stacks: Record<string, Stack>;
   public api: GraphqlApi;
-  public dataSources: Record<string, BaseDataSource>;
-  public tables: Record<string, Table>;
-  public functions: Record<string, AppsyncFunction>;
-  public resolvers: Record<string, Resolver>;
-  public subcriptionAuthFunctions: Record<string, AppsyncFunction>;
-  public disableSandboxFunction: Record<string, AppsyncFunction>;
-  public dataSourceOutputs: Record<string, string>;
-  public functionOutputs: Record<string, string>;
 
   constructor(
     scope: Construct,
@@ -82,21 +73,20 @@ export class SchemaTransformerStack extends Stack {
     this.prepareOutputDir();
     const authConfig = this.getAuthConfig();
     const featureFlags = this.getFeatureFlags();
-    this.transformer = this.getTransformer(authConfig, featureFlags);
+    const transformer = this.getTransformer(authConfig, featureFlags);
     const fullSchema = this.getSchema();
-    const deployment = this.transformer.transform(fullSchema);
+    const deployment = transformer.transform(fullSchema);
     this.saveSchema(deployment);
     this.saveVtls(deployment);
     console.log(deployment.stackMapping);
 
     this.stacks = {};
-    this.dataSources = {};
-    this.tables = {};
-    this.functions = {};
-    this.resolvers = {};
-    this.subcriptionAuthFunctions = {};
-    this.dataSourceOutputs= {};
-    this.functionOutputs = {};
+    let dataSourceList: Record<string, BaseDataSource> = {};
+    let tableList: Record<string, Table> = {};
+    let functionList: Record<string, AppsyncFunction> = {};
+    //let resolverList: Record<string, Resolver> = {};
+    let dataSourceOutputs: Record<string, string> = {};
+    let functionOutputs: Record<string, string> = {};
 
     this.api = new GraphqlApi(this, "test_api", {
       name: "TestApi",
@@ -113,7 +103,7 @@ export class SchemaTransformerStack extends Stack {
         },
       },
     });
-    this.dataSources[NONE_DS] = this.api.addNoneDataSource("none");
+    dataSourceList[NONE_DS] = this.api.addNoneDataSource("none");
 
     for (const stackKey in deployment.stacks) {
       const stack = deployment.stacks[stackKey];
@@ -123,27 +113,25 @@ export class SchemaTransformerStack extends Stack {
         //console.log(`${stackKey} - ${resource.Type}`);
         switch (resource.Type) {
           case "AWS::DynamoDB::Table":
-            this.tables[stackKey] = this.createTable(this, stackKey, resource);
+            tableList[stackKey] = this.createTable(this, stackKey, resource);
             break;
           case "AWS::AppSync::DataSource":
             //console.log(`${stackKey}DataSource`);
-            this.dataSources[`${stackKey}DataSource`] = this.createDataSource(
+            dataSourceList[`${stackKey}DataSource`] = this.createDataSource(
               stackKey,
-              this.api,
-              this.tables
+              tableList
             );
             break;
           case "AWS::AppSync::FunctionConfiguration":
             const functionName = resource.Properties.Name;
             //console.log(functionName);
             //console.log(resource.Properties.DataSourceName);
-            this.functions[functionName] = this.generateFunction(
+            functionList[functionName] = this.generateFunction(
               this.stacks[stackKey],
               resource,
-              this.dataSourceOutputs,
-              this.api,
+              dataSourceOutputs,
               functionName,
-              this.dataSources,
+              dataSourceList,
             );
             break;
           case "AWS::AppSync::Resolver":
@@ -155,8 +143,8 @@ export class SchemaTransformerStack extends Stack {
             //this.resolvers[`${typeName}${fieldName}`] = 
             this.generateResolver(
               this.stacks[stackKey],
-              this.api,
               resource,
+              functionList,
               stackKey,
               fieldName,
               typeName
@@ -167,7 +155,9 @@ export class SchemaTransformerStack extends Stack {
 
       const outputs = stack.Outputs;
       if (outputs !== undefined) {
-        this.parseOutputs(outputs);
+        const allOutputs = this.parseOutputs(outputs, functionList);
+        dataSourceOutputs = allOutputs.dataSourceOutputs;
+        functionOutputs = allOutputs.functionOutputs;
       }
 
       //console.log(stack);
@@ -175,29 +165,35 @@ export class SchemaTransformerStack extends Stack {
     //console.log(this.functionOutputs);
   }
   
-  parseOutputs(outputs: Record<string, any>) {
+  parseOutputs(outputs: Record<string, any>, functionList: Record<string, AppsyncFunction>): {dataSourceOutputs: Record<string, string>, functionOutputs: Record<string, string>} {
+    const dataSourceOutputs: Record<string, string> = {};
+    const functionOutputs: Record<string, string> = {};
+
+
     for (const outputKey in outputs) {
       if (outputKey.startsWith('transformerrootstack')) {
         if (outputKey.endsWith('FunctionId') === false) {
           const getAtt = outputs[outputKey].Value['Fn::GetAtt'];
           if (getAtt !== undefined) {
-            this.dataSourceOutputs[outputKey] = getAtt[0];
+            dataSourceOutputs[outputKey] = getAtt[0];
           }
         } else {
           //console.log(outputKey);
           const getAtt = outputs[outputKey].Value['Fn::GetAtt'][0];
-          for (const functionKey in this.functions) {
+          for (const functionKey in functionList) {
             if (getAtt.startsWith(functionKey)) {
-              this.functionOutputs[outputKey] = functionKey;
+              functionOutputs[outputKey] = functionKey;
               break;
             }
           }
         }
       }
     }
+
+    return {dataSourceOutputs, functionOutputs};
   }
 
-  generateFunction(context: Construct, resource: any, outputs: Record<string, string>, api: GraphqlApi, functionName: string, dataSources: Record<string, BaseDataSource>) {
+  generateFunction(context: Construct, resource: any, outputs: Record<string, string>, functionName: string, dataSources: Record<string, BaseDataSource>) {
     const properties = resource.Properties;
     const reqFile = properties.RequestMappingTemplateS3Location['Fn::Join'][1][4].split('/')[2];
 
@@ -239,7 +235,7 @@ export class SchemaTransformerStack extends Stack {
         context, functionName,
         {
           name: functionName,
-          api,
+          api: this.api,
           dataSource: dataSources[NONE_DS],
           requestMappingTemplate: MappingTemplate.fromFile(
             path.join(
@@ -254,9 +250,8 @@ export class SchemaTransformerStack extends Stack {
 
   generateResolver(
     context: Construct,
-    api: GraphqlApi,
     resource: any,
-    //functions: Record<string, AppsyncFunction>,
+    functionList: Record<string, AppsyncFunction>,
     tableName: string,
     fieldName: string,
     typeName: string
@@ -278,11 +273,11 @@ export class SchemaTransformerStack extends Stack {
         fnLongName = fn['Ref'];
         //console.log(`REF => ${fnRef}`);
       }
-      for (const fnKey in this.functions) {
+      for (const fnKey in functionList) {
         const fnKey2 = `${fnKey}${fnKey}`;
         if (fnLongName.indexOf(fnKey2) !== -1) {
           //console.log(`FOUND: ${fnKey}`);
-          functions.push(this.functions[fnKey]);
+          functions.push(functionList[fnKey]);
           //this.generateHookFunction(fnKey);
           break;
         }
@@ -299,7 +294,7 @@ export class SchemaTransformerStack extends Stack {
     }
 
      new Resolver(context, `${typeName}${fieldName}Resolver`, {
-      api,
+      api: this.api,
       typeName,
       fieldName,
       requestMappingTemplate: MappingTemplate.fromString(`
@@ -334,174 +329,6 @@ export class SchemaTransformerStack extends Stack {
     }
   }
 
-  generateResolverOld(
-    context: Construct,
-    api: GraphqlApi,
-    dataSources: Record<string, BaseDataSource>,
-    stackKey: string,
-    fieldName: string,
-    typeName: string
-  ): Resolver {
-    let auth = false;
-    let dataSourceType = "NONE";
-    const functions: AppsyncFunction[] = [];
-    // TODO: add preauth JS Resolver. e.g., Query.getTodo.preAuth.js
-    if (TYPE_NAMES.indexOf(typeName) !== -1) {
-        auth = true;
-        // TODO AUTH
-        if (typeName === "Subscription") {
-          if (this.subcriptionAuthFunctions[stackKey] === undefined) {
-            const authFn = this.generateAuthFunction(context, api, fieldName, typeName, dataSources[NONE_DS]);
-            if (authFn !== undefined) {
-              this.subcriptionAuthFunctions[stackKey] = authFn;
-              functions.push(this.subcriptionAuthFunctions[stackKey]);
-            }
-          } else {
-            functions.push(this.subcriptionAuthFunctions[stackKey]);
-          }
-        } else {
-          const authFn = this.generateAuthFunction(context, api, fieldName, typeName, dataSources[NONE_DS]);
-          if (authFn !== undefined) {
-            functions.push(authFn);
-          }
-        }
-
-        // TODO: post auth VTL
-
-      if (typeName === "MUTATION" || typeName === "SUBSCRIPTION") {
-        dataSourceType = "AMAZON_DYNAMODB";
-      }
-    }
-    // TODO: add postauth JS Resolver. e.g., Query.getTodo.postAuth.1.XXX.js
-    
-
-    let dataResolverDataSource: BaseDataSource = dataSources[NONE_DS];
-
-    // TODO: DataResolverFunction - done-ish, but it should be editable and using JS Resolver instead. e.g., Query.getTodo.dataResolver.req.js
-    let dataResolverFn: AppsyncFunction | undefined;
-    dataResolverFn = this.generateDataResolverFunction(
-      context,
-      api,
-      dataResolverDataSource,
-      fieldName,
-      typeName
-    )
-    if (dataResolverFn !== undefined) {
-      functions.push(dataResolverFn);
-    }
-
-    // TODO: add postauth JS Resolver. e.g., Query.getTodo.postDataResolver.js
-
-    const resolver = new Resolver(context, `${typeName}${fieldName}Resolver`, {
-      api,
-      typeName,
-      fieldName,
-      requestMappingTemplate: MappingTemplate.fromString(`
-        $util.qr($ctx.stash.put("typeName", "${typeName}"))
-        $util.qr($ctx.stash.put("fieldName", "${fieldName}"))
-        $util.qr($ctx.stash.put("conditions", []))
-        $util.qr($ctx.stash.put("metadata", {}))
-        $util.qr($ctx.stash.metadata.put("dataSourceType", "${dataSourceType}"))
-        $util.qr($ctx.stash.put("tableName", "${stackKey}"))
-        $util.toJson({})
-      `),
-      pipelineConfig: functions,
-      responseMappingTemplate: MappingTemplate.fromString(
-        "$util.toJson($ctx.prev.result)"
-      ),
-    });
-
-    // TODO: Field resolver
-    return resolver;
-  }
-
-  generateDataResolverFunction(
-    context: Construct,
-    api: GraphqlApi,
-    dataSource: BaseDataSource,
-    fieldName: string,
-    typeName: string
-  ): AppsyncFunction | undefined {
-    let fn: AppsyncFunction;
-
-    if (fs.existsSync(path.join(this.props.outDir, `${typeName}.${fieldName}.req.vtl`))) {
-      fn = new AppsyncFunction(
-        context,
-        `${typeName}${fieldName}DataResolverfunction`,
-        {
-          name: `${typeName}_${fieldName}_data_resolver_function`,
-          api,
-          dataSource,
-          requestMappingTemplate: MappingTemplate.fromFile(
-            path.join(this.props.outDir, `${typeName}.${fieldName}.req.vtl`)
-          ),
-          responseMappingTemplate: MappingTemplate.fromFile(
-            path.join(this.props.outDir, `${typeName}.${fieldName}.res.vtl`)
-          ),
-        }
-      );
-    }
-
-    return fn!;
-  }
-
-  generateAuthFunction(
-    context: Construct,
-    api: GraphqlApi,
-    fieldName: string,
-    typeName: string,
-    dataSource: BaseDataSource,
-  ): AppsyncFunction | undefined {
-    let fn: AppsyncFunction;
-
-    if (fs.existsSync(path.join(this.props.outDir, `${typeName}.${fieldName}.auth.1.req.vtl`))) {
-      fn = new AppsyncFunction(
-        context,
-        `${typeName}${fieldName}AuthFunction`,
-        {
-          name: `${typeName}_${fieldName}_auth1_function`,
-          api,
-          dataSource,
-          requestMappingTemplate: MappingTemplate.fromFile(
-            path.join(
-              this.props.outDir,
-              `${typeName}.${fieldName}.auth.1.req.vtl`
-            )
-          ),
-          responseMappingTemplate: MappingTemplate.fromString("$util.toJson()"),
-        }
-      );
-    }
-
-    return fn!;
-  }
-
-  generateDisableSandboxFunction(
-    context: Construct,
-    api: GraphqlApi,
-    fieldName: string,
-    typeName: string,
-    dataSource: BaseDataSource,
-  ): AppsyncFunction {
-    const fn = new AppsyncFunction(
-      context,
-      `${typeName}${fieldName}DisableSandboxFunction`,
-      {
-        name: `${typeName}_${fieldName}disable_sandbox_function`,
-        api,
-        dataSource,
-        requestMappingTemplate: MappingTemplate.fromFile(
-          path.join(
-            this.props.outDir,
-            `${typeName}.${fieldName}.postAuth.1.req.vtl`
-          )
-        ),
-        responseMappingTemplate: MappingTemplate.fromString("$util.toJson()"),
-      }
-    );
-
-    return fn;
-  }
 
   createTable(context: Construct, tableName: string, resource: any): Table {
     // TODO: parse resource
@@ -516,10 +343,9 @@ export class SchemaTransformerStack extends Stack {
 
   createDataSource(
     tableName: string,
-    api: GraphqlApi,
     tables: Record<string, Table>
   ) {
-    return api.addDynamoDbDataSource(
+    return this.api.addDynamoDbDataSource(
       `${tableName}DataSource`,
       tables[tableName]
     );
