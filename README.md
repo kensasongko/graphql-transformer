@@ -1,11 +1,11 @@
-# Amplify Graphql Transformer
+# CDK Amplify Graphql Transformer
 
-This project shows how to generate configureable CDK stack from amplify transformers.
+This project shows how to generate configureable CDK stack from Amplify transformers.
 
 - Place your `graphql.schema` in `lib/graphql/` (or `lib/graphql/schema/` if you have more than one).
 - Run `cdk deploy --all --require-approval never --concurrency 10`
 
-## Custom JS Resolver
+## Custom JS Resolver Function
 
 - You can add custom JS resolver function to the Pipeline Resolver. The format is as follows:
 `/path/to/custom/function/[TableName]/[TypeName].[FieldName].[PipelineStep].[HookStep].[HookOrder].[DataSourceName].js`
@@ -17,6 +17,7 @@ where:
 - `HookStep` is where to add the hook. Allowed values: pre, post, override (override will override the VTL function)
 - `HookOrder` is the insert order of the hook (e.g., 1, 2, 3)
 - `DataSourceName` is the name of the data source (e.g., PostDataSource, CommentDataSource)
+
 ### Example of function file name:
 - `lib/resolvers/Post/Query.getPost.auth.pre.1.PostDataSource.js`
 - `lib/resolvers/Post/Query.getPost.auth.pre.2.CommentDataSource.js`
