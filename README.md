@@ -18,11 +18,11 @@ where:
 - `HookOrder` is the insert order of the hook (e.g., 1, 2, 3)
 - `DataSourceName` is the name of the data source (e.g., PostDataSource, CommentDataSource)
 ### Example of function file name:
-- `Post/Query.getPost.auth.pre.1.PostDataSource.js`
-- `Post/Query.getPost.auth.pre.2.CommentDataSource.js`
-- `Post/Query.getPost.auth.pre.3.PostMetadataDataSource.js`
-- `Post/Query.getPost.auth.post.1.PostDataSource.js`
-- `Post/Query.getPost.data.override.1.PostDataSource.js`
+- `lib/resolvers/Post/Query.getPost.auth.pre.1.PostDataSource.js`
+- `lib/resolvers/Post/Query.getPost.auth.pre.2.CommentDataSource.js`
+- `lib/resolvers/Post/Query.getPost.auth.pre.3.PostMetadataDataSource.js`
+- `lib/resolvers/Post/Query.getPost.auth.post.1.PostDataSource.js`
+- `lib/resolvers/Post/Query.getPost.data.override.1.PostDataSource.js`
 
 
 ## Useful commands
