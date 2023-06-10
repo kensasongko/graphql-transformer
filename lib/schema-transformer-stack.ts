@@ -113,7 +113,7 @@ export class SchemaTransformerStack extends Stack {
 
     this.api = new GraphqlApi(this, `${this.apiName}Api`, {
       name: `${this.apiName}Api`,
-      schema: SchemaFile.fromAsset(path.join(this.outDir, "graphql.schema")),
+      schema: SchemaFile.fromAsset(path.join(this.outDir, "schema.graphql")),
       authorizationConfig: {
         defaultAuthorization: {
           authorizationType: AuthorizationType.USER_POOL,
@@ -167,6 +167,7 @@ export class SchemaTransformerStack extends Stack {
 
     return dataSourceOutputs;
   }
+
   protected createStack(deployment: DeploymentResources, props: StackProps) {
     for (const stackKey in deployment.stacks) {
       this.stackList[`${stackKey}${FUNCTION_STACK_SUFFIX}`] = new Stack(
@@ -577,19 +578,9 @@ export class SchemaTransformerStack extends Stack {
   }
 
   protected saveSchema(out: DeploymentResources) {
-    fs.writeFileSync(path.join(this.outDir, "graphql.schema"), out.schema, {
+    fs.writeFileSync(path.join(this.outDir, "schema.graphql"), out.schema, {
       flag: "w",
     });
-  }
-
-  protected saveVtls(out: DeploymentResources) {
-    for (const key in out.resolvers) {
-      const pathToFile = path.join(this.outDir, key);
-      //console.log("Writing: " + pathToFile);
-      fs.writeFileSync(pathToFile, out.resolvers[key], {
-        flag: "w",
-      });
-    }
   }
 
   protected prepareOutputDir() {

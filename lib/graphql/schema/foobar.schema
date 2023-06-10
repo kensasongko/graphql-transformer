@@ -1,9 +1,9 @@
-type Foo @model {
+type Foo @model @auth(rules: [{allow: owner}]) {
   id: ID!
   bars: [Bar] @manyToMany(relationName: "FooBar")
 }
 
-type Bar @model {
+type Bar @model @auth(rules: [{allow: owner}]) {
   id: ID!
   foos: [Foo] @manyToMany(relationName: "FooBar")
 }
