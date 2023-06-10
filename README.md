@@ -22,6 +22,9 @@ where:
 - `HookOrder` is the insert order of the hook (e.g., 1, 2, 3)
 - `DataSourceName` is the name of the data source (e.g., PostDataSource, CommentDataSource)
 
+## TODO
+- Data sync table
+
 ### Example of function file name:
 - `lib/resolvers/Post/Query.getPost.auth.pre.1.PostDataSource.js`
 - `lib/resolvers/Post/Query.getPost.auth.pre.2.CommentDataSource.js`
