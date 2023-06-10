@@ -7,10 +7,8 @@ const app = new cdk.App();
 new SchemaTransformerStack(app, "SchemaTransformerStack", {
   apiName: "Test",
   jsResolverDir: "./lib/resolvers/",
-  schemaDir: "./lib/graphql",
-  schemaSingleFileName: "graphql.schema",
-  schemaMultiDirName: "schema",
-  outDir: "./output",
+  schemaDir: "./lib/schema",
+  outDir: "./lib/graphql/",
   env: {
     account: process.env.CDK_DEFAULT_ACCOUNT,
     region: process.env.CDK_DEFAULT_REGION,

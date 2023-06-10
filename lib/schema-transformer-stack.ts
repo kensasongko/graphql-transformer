@@ -62,8 +62,6 @@ export interface SchemaTransformerStackProps extends StackProps {
   apiName: string;
   jsResolverDir: string;
   schemaDir: string;
-  schemaSingleFileName: string;
-  schemaMultiDirName: string;
   outDir: string;
   userPool?: IUserPool;
 }
@@ -94,8 +92,6 @@ export class SchemaTransformerStack extends Stack {
     this.jsResolverDir = props.jsResolverDir;
     this.outDir = props.outDir;
     this.schemaDir = props.schemaDir;
-    this.schemaSingleFileName = props.schemaSingleFileName;
-    this.schemaMultiDirName = props.schemaMultiDirName;
 
     if (props.userPool !== undefined) {
       this.userPool = props.userPool;
@@ -185,13 +181,13 @@ export class SchemaTransformerStack extends Stack {
   ) {
     for (const stackKey in deployment.stacks) {
       const stack = deployment.stacks[stackKey];
-      console.log(`STACK: ${stackKey}Stack`);
+      //console.log(`STACK: ${stackKey}Stack`);
       for (const resourceKey in stack.Resources) {
         const resource = stack.Resources[resourceKey];
         if (resource.Type === "AWS::AppSync::FunctionConfiguration") {
           const properties = resource.Properties;
           const functionName = properties.Name;
-          console.log(functionName);
+          //console.log(functionName);
           const reqFile =
             properties.RequestMappingTemplateS3Location["Fn::Join"][1][4].split(
               "/"
@@ -584,38 +580,20 @@ export class SchemaTransformerStack extends Stack {
   }
 
   protected prepareOutputDir() {
-    if (fs.existsSync(this.outDir)) {
-      const stats = fs.statSync(this.outDir);
-      if (stats.isDirectory()) {
-        fs.emptyDirSync(this.outDir);
-      } else {
-        fs.rmSync(this.outDir);
-      }
+    if (!fs.existsSync(this.outDir)) {
+      fs.mkdirSync(this.outDir, { recursive: true });
     }
-    fs.mkdirSync(this.outDir, { recursive: true });
   }
 
   protected getSchema(): string {
-    const schemaFilePath = path.normalize(
-      path.join(this.schemaDir, this.schemaSingleFileName)
-    );
-    const schemaDirectoryPath = path.normalize(
-      path.join(this.schemaDir, this.schemaMultiDirName)
-    );
-
     let fullSchema: string = "";
-    if (fs.existsSync(schemaFilePath)) {
-      const stats = fs.statSync(schemaFilePath);
-      if (stats.isFile()) {
-        fullSchema = fs.readFileSync(schemaFilePath, "utf8");
-      }
-    } else if (fs.existsSync(schemaDirectoryPath)) {
-      const stats = fs.statSync(schemaDirectoryPath);
+    if (fs.existsSync(this.schemaDir)) {
+      const stats = fs.statSync(this.schemaDir);
       if (stats.isDirectory()) {
         const fileContentsList: string[] = [];
-        fs.readdirSync(schemaDirectoryPath).forEach((fileName) => {
+        fs.readdirSync(this.schemaDir).forEach((fileName) => {
           fileContentsList.push(
-            fs.readFileSync(path.join(schemaDirectoryPath, fileName), "utf8")
+            fs.readFileSync(path.join(this.schemaDir, fileName), "utf8")
           );
         });
         fullSchema = fileContentsList.join("\n");

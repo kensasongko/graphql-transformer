@@ -2,8 +2,12 @@
 
 This project shows how to generate configureable CDK stack from Amplify transformers.
 
-- Place your `graphql.schema` in `lib/graphql/` (or `lib/graphql/schema/` if you have more than one).
+- Place your `graphql.schema` in `lib/schema/` (or `foo.schema` and `bar.schema` if you have more than one).
 - Run `cdk deploy --all --require-approval never --concurrency 10`
+
+## Amplify codegen
+
+Run `yarn codegen` to generate typings, mutation, query and subscription files.
 
 ## Custom JS Resolver Function
 
@@ -28,9 +32,9 @@ where:
 
 ## Useful commands
 
-- `npm run build` compile typescript to js
-- `npm run watch` watch for changes and compile
-- `npm run test` perform the jest unit tests
+- `yarn build` compile typescript to js
+- `yarn watch` watch for changes and compile
+- `yarn test` perform the jest unit tests
 - `cdk deploy` deploy this stack to your default AWS account/region
 - `cdk diff` compare deployed stack with current state
 - `cdk synth` emits the synthesized CloudFormation template

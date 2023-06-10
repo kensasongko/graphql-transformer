@@ -1,0 +1,582 @@
+type PostMetadata {
+  postMetadataReference: ID!
+  title: String!
+  post: Post
+  createdAt: AWSDateTime!
+  updatedAt: AWSDateTime!
+  _version: Int!
+  _deleted: Boolean
+  _lastChangedAt: AWSTimestamp!
+  postMetadataPostPostReference: ID
+  owner: String
+}
+
+type Post {
+  postReference: ID!
+  title: String!
+  comments(filter: ModelCommentFilterInput, sortDirection: ModelSortDirection, limit: Int, nextToken: String): ModelCommentConnection
+  metadata: PostMetadata
+  createdAt: AWSDateTime!
+  updatedAt: AWSDateTime!
+  _version: Int!
+  _deleted: Boolean
+  _lastChangedAt: AWSTimestamp!
+  postMetadataPostMetadataReference: ID
+  owner: String
+}
+
+type Comment {
+  commentReference: ID!
+  title: String!
+  createdAt: AWSDateTime!
+  updatedAt: AWSDateTime!
+  _version: Int!
+  _deleted: Boolean
+  _lastChangedAt: AWSTimestamp!
+  postCommentsPostReference: ID
+  owner: String
+}
+
+type Foo {
+  id: ID!
+  bars(filter: ModelFooBarFilterInput, sortDirection: ModelSortDirection, limit: Int, nextToken: String): ModelFooBarConnection
+  createdAt: AWSDateTime!
+  updatedAt: AWSDateTime!
+  _version: Int!
+  _deleted: Boolean
+  _lastChangedAt: AWSTimestamp!
+  owner: String
+}
+
+type Bar {
+  id: ID!
+  foos(filter: ModelFooBarFilterInput, sortDirection: ModelSortDirection, limit: Int, nextToken: String): ModelFooBarConnection
+  createdAt: AWSDateTime!
+  updatedAt: AWSDateTime!
+  _version: Int!
+  _deleted: Boolean
+  _lastChangedAt: AWSTimestamp!
+  owner: String
+}
+
+type FooBar {
+  id: ID!
+  fooId: ID!
+  barId: ID!
+  foo: Foo!
+  bar: Bar!
+  createdAt: AWSDateTime!
+  updatedAt: AWSDateTime!
+  _version: Int!
+  _deleted: Boolean
+  _lastChangedAt: AWSTimestamp!
+  owner: String
+}
+
+input ModelStringInput {
+  ne: String
+  eq: String
+  le: String
+  lt: String
+  ge: String
+  gt: String
+  contains: String
+  notContains: String
+  between: [String]
+  beginsWith: String
+  attributeExists: Boolean
+  attributeType: ModelAttributeTypes
+  size: ModelSizeInput
+}
+
+input ModelIntInput {
+  ne: Int
+  eq: Int
+  le: Int
+  lt: Int
+  ge: Int
+  gt: Int
+  between: [Int]
+  attributeExists: Boolean
+  attributeType: ModelAttributeTypes
+}
+
+input ModelFloatInput {
+  ne: Float
+  eq: Float
+  le: Float
+  lt: Float
+  ge: Float
+  gt: Float
+  between: [Float]
+  attributeExists: Boolean
+  attributeType: ModelAttributeTypes
+}
+
+input ModelBooleanInput {
+  ne: Boolean
+  eq: Boolean
+  attributeExists: Boolean
+  attributeType: ModelAttributeTypes
+}
+
+input ModelIDInput {
+  ne: ID
+  eq: ID
+  le: ID
+  lt: ID
+  ge: ID
+  gt: ID
+  contains: ID
+  notContains: ID
+  between: [ID]
+  beginsWith: ID
+  attributeExists: Boolean
+  attributeType: ModelAttributeTypes
+  size: ModelSizeInput
+}
+
+input ModelSubscriptionStringInput {
+  ne: String
+  eq: String
+  le: String
+  lt: String
+  ge: String
+  gt: String
+  contains: String
+  notContains: String
+  between: [String]
+  beginsWith: String
+  in: [String]
+  notIn: [String]
+}
+
+input ModelSubscriptionIntInput {
+  ne: Int
+  eq: Int
+  le: Int
+  lt: Int
+  ge: Int
+  gt: Int
+  between: [Int]
+  in: [Int]
+  notIn: [Int]
+}
+
+input ModelSubscriptionFloatInput {
+  ne: Float
+  eq: Float
+  le: Float
+  lt: Float
+  ge: Float
+  gt: Float
+  between: [Float]
+  in: [Float]
+  notIn: [Float]
+}
+
+input ModelSubscriptionBooleanInput {
+  ne: Boolean
+  eq: Boolean
+}
+
+input ModelSubscriptionIDInput {
+  ne: ID
+  eq: ID
+  le: ID
+  lt: ID
+  ge: ID
+  gt: ID
+  contains: ID
+  notContains: ID
+  between: [ID]
+  beginsWith: ID
+  in: [ID]
+  notIn: [ID]
+}
+
+enum ModelAttributeTypes {
+  binary
+  binarySet
+  bool
+  list
+  map
+  number
+  numberSet
+  string
+  stringSet
+  _null
+}
+
+input ModelSizeInput {
+  ne: Int
+  eq: Int
+  le: Int
+  lt: Int
+  ge: Int
+  gt: Int
+  between: [Int]
+}
+
+enum ModelSortDirection {
+  ASC
+  DESC
+}
+
+type ModelPostMetadataConnection {
+  items: [PostMetadata]!
+  nextToken: String
+  startedAt: AWSTimestamp
+}
+
+input ModelPostMetadataFilterInput {
+  postMetadataReference: ModelIDInput
+  title: ModelStringInput
+  and: [ModelPostMetadataFilterInput]
+  or: [ModelPostMetadataFilterInput]
+  not: ModelPostMetadataFilterInput
+  _deleted: ModelBooleanInput
+  postMetadataPostPostReference: ModelIDInput
+}
+
+type Query {
+  getPostMetadata(postMetadataReference: ID!): PostMetadata
+  listPostMetadata(postMetadataReference: ID, filter: ModelPostMetadataFilterInput, limit: Int, nextToken: String, sortDirection: ModelSortDirection): ModelPostMetadataConnection
+  syncPostMetadata(filter: ModelPostMetadataFilterInput, limit: Int, nextToken: String, lastSync: AWSTimestamp): ModelPostMetadataConnection
+  getPost(postReference: ID!): Post
+  listPosts(postReference: ID, filter: ModelPostFilterInput, limit: Int, nextToken: String, sortDirection: ModelSortDirection): ModelPostConnection
+  syncPosts(filter: ModelPostFilterInput, limit: Int, nextToken: String, lastSync: AWSTimestamp): ModelPostConnection
+  getComment(commentReference: ID!): Comment
+  listComments(commentReference: ID, filter: ModelCommentFilterInput, limit: Int, nextToken: String, sortDirection: ModelSortDirection): ModelCommentConnection
+  syncComments(filter: ModelCommentFilterInput, limit: Int, nextToken: String, lastSync: AWSTimestamp): ModelCommentConnection
+  getFoo(id: ID!): Foo
+  listFoos(filter: ModelFooFilterInput, limit: Int, nextToken: String): ModelFooConnection
+  syncFoos(filter: ModelFooFilterInput, limit: Int, nextToken: String, lastSync: AWSTimestamp): ModelFooConnection
+  getBar(id: ID!): Bar
+  listBars(filter: ModelBarFilterInput, limit: Int, nextToken: String): ModelBarConnection
+  syncBars(filter: ModelBarFilterInput, limit: Int, nextToken: String, lastSync: AWSTimestamp): ModelBarConnection
+  getFooBar(id: ID!): FooBar
+  listFooBars(filter: ModelFooBarFilterInput, limit: Int, nextToken: String): ModelFooBarConnection
+  syncFooBars(filter: ModelFooBarFilterInput, limit: Int, nextToken: String, lastSync: AWSTimestamp): ModelFooBarConnection
+}
+
+input ModelPostMetadataConditionInput {
+  title: ModelStringInput
+  and: [ModelPostMetadataConditionInput]
+  or: [ModelPostMetadataConditionInput]
+  not: ModelPostMetadataConditionInput
+  _deleted: ModelBooleanInput
+  postMetadataPostPostReference: ModelIDInput
+}
+
+input CreatePostMetadataInput {
+  postMetadataReference: ID!
+  title: String!
+  _version: Int
+  postMetadataPostPostReference: ID
+}
+
+input UpdatePostMetadataInput {
+  postMetadataReference: ID!
+  title: String
+  _version: Int
+  postMetadataPostPostReference: ID
+}
+
+input DeletePostMetadataInput {
+  postMetadataReference: ID!
+  _version: Int
+}
+
+type Mutation {
+  createPostMetadata(input: CreatePostMetadataInput!, condition: ModelPostMetadataConditionInput): PostMetadata
+  updatePostMetadata(input: UpdatePostMetadataInput!, condition: ModelPostMetadataConditionInput): PostMetadata
+  deletePostMetadata(input: DeletePostMetadataInput!, condition: ModelPostMetadataConditionInput): PostMetadata
+  createPost(input: CreatePostInput!, condition: ModelPostConditionInput): Post
+  updatePost(input: UpdatePostInput!, condition: ModelPostConditionInput): Post
+  deletePost(input: DeletePostInput!, condition: ModelPostConditionInput): Post
+  createComment(input: CreateCommentInput!, condition: ModelCommentConditionInput): Comment
+  updateComment(input: UpdateCommentInput!, condition: ModelCommentConditionInput): Comment
+  deleteComment(input: DeleteCommentInput!, condition: ModelCommentConditionInput): Comment
+  createFoo(input: CreateFooInput!, condition: ModelFooConditionInput): Foo
+  updateFoo(input: UpdateFooInput!, condition: ModelFooConditionInput): Foo
+  deleteFoo(input: DeleteFooInput!, condition: ModelFooConditionInput): Foo
+  createBar(input: CreateBarInput!, condition: ModelBarConditionInput): Bar
+  updateBar(input: UpdateBarInput!, condition: ModelBarConditionInput): Bar
+  deleteBar(input: DeleteBarInput!, condition: ModelBarConditionInput): Bar
+  createFooBar(input: CreateFooBarInput!, condition: ModelFooBarConditionInput): FooBar
+  updateFooBar(input: UpdateFooBarInput!, condition: ModelFooBarConditionInput): FooBar
+  deleteFooBar(input: DeleteFooBarInput!, condition: ModelFooBarConditionInput): FooBar
+}
+
+input ModelSubscriptionPostMetadataFilterInput {
+  postMetadataReference: ModelSubscriptionIDInput
+  title: ModelSubscriptionStringInput
+  and: [ModelSubscriptionPostMetadataFilterInput]
+  or: [ModelSubscriptionPostMetadataFilterInput]
+  _deleted: ModelBooleanInput
+}
+
+type Subscription {
+  onCreatePostMetadata(filter: ModelSubscriptionPostMetadataFilterInput, owner: String): PostMetadata @aws_subscribe(mutations: ["createPostMetadata"])
+  onUpdatePostMetadata(filter: ModelSubscriptionPostMetadataFilterInput, owner: String): PostMetadata @aws_subscribe(mutations: ["updatePostMetadata"])
+  onDeletePostMetadata(filter: ModelSubscriptionPostMetadataFilterInput, owner: String): PostMetadata @aws_subscribe(mutations: ["deletePostMetadata"])
+  onCreatePost(filter: ModelSubscriptionPostFilterInput, owner: String): Post @aws_subscribe(mutations: ["createPost"])
+  onUpdatePost(filter: ModelSubscriptionPostFilterInput, owner: String): Post @aws_subscribe(mutations: ["updatePost"])
+  onDeletePost(filter: ModelSubscriptionPostFilterInput, owner: String): Post @aws_subscribe(mutations: ["deletePost"])
+  onCreateComment(filter: ModelSubscriptionCommentFilterInput, owner: String): Comment @aws_subscribe(mutations: ["createComment"])
+  onUpdateComment(filter: ModelSubscriptionCommentFilterInput, owner: String): Comment @aws_subscribe(mutations: ["updateComment"])
+  onDeleteComment(filter: ModelSubscriptionCommentFilterInput, owner: String): Comment @aws_subscribe(mutations: ["deleteComment"])
+  onCreateFoo(filter: ModelSubscriptionFooFilterInput, owner: String): Foo @aws_subscribe(mutations: ["createFoo"])
+  onUpdateFoo(filter: ModelSubscriptionFooFilterInput, owner: String): Foo @aws_subscribe(mutations: ["updateFoo"])
+  onDeleteFoo(filter: ModelSubscriptionFooFilterInput, owner: String): Foo @aws_subscribe(mutations: ["deleteFoo"])
+  onCreateBar(filter: ModelSubscriptionBarFilterInput, owner: String): Bar @aws_subscribe(mutations: ["createBar"])
+  onUpdateBar(filter: ModelSubscriptionBarFilterInput, owner: String): Bar @aws_subscribe(mutations: ["updateBar"])
+  onDeleteBar(filter: ModelSubscriptionBarFilterInput, owner: String): Bar @aws_subscribe(mutations: ["deleteBar"])
+  onCreateFooBar(filter: ModelSubscriptionFooBarFilterInput, owner: String): FooBar @aws_subscribe(mutations: ["createFooBar"])
+  onUpdateFooBar(filter: ModelSubscriptionFooBarFilterInput, owner: String): FooBar @aws_subscribe(mutations: ["updateFooBar"])
+  onDeleteFooBar(filter: ModelSubscriptionFooBarFilterInput, owner: String): FooBar @aws_subscribe(mutations: ["deleteFooBar"])
+}
+
+type ModelPostConnection {
+  items: [Post]!
+  nextToken: String
+  startedAt: AWSTimestamp
+}
+
+input ModelPostFilterInput {
+  postReference: ModelIDInput
+  title: ModelStringInput
+  and: [ModelPostFilterInput]
+  or: [ModelPostFilterInput]
+  not: ModelPostFilterInput
+  _deleted: ModelBooleanInput
+  postMetadataPostMetadataReference: ModelIDInput
+}
+
+input ModelPostConditionInput {
+  title: ModelStringInput
+  and: [ModelPostConditionInput]
+  or: [ModelPostConditionInput]
+  not: ModelPostConditionInput
+  _deleted: ModelBooleanInput
+  postMetadataPostMetadataReference: ModelIDInput
+}
+
+input CreatePostInput {
+  postReference: ID!
+  title: String!
+  _version: Int
+  postMetadataPostMetadataReference: ID
+}
+
+input UpdatePostInput {
+  postReference: ID!
+  title: String
+  _version: Int
+  postMetadataPostMetadataReference: ID
+}
+
+input DeletePostInput {
+  postReference: ID!
+  _version: Int
+}
+
+input ModelSubscriptionPostFilterInput {
+  postReference: ModelSubscriptionIDInput
+  title: ModelSubscriptionStringInput
+  and: [ModelSubscriptionPostFilterInput]
+  or: [ModelSubscriptionPostFilterInput]
+  _deleted: ModelBooleanInput
+}
+
+type ModelCommentConnection {
+  items: [Comment]!
+  nextToken: String
+  startedAt: AWSTimestamp
+}
+
+input ModelCommentFilterInput {
+  commentReference: ModelIDInput
+  title: ModelStringInput
+  and: [ModelCommentFilterInput]
+  or: [ModelCommentFilterInput]
+  not: ModelCommentFilterInput
+  _deleted: ModelBooleanInput
+  postCommentsPostReference: ModelIDInput
+}
+
+input ModelCommentConditionInput {
+  title: ModelStringInput
+  and: [ModelCommentConditionInput]
+  or: [ModelCommentConditionInput]
+  not: ModelCommentConditionInput
+  _deleted: ModelBooleanInput
+  postCommentsPostReference: ModelIDInput
+}
+
+input CreateCommentInput {
+  commentReference: ID!
+  title: String!
+  _version: Int
+  postCommentsPostReference: ID
+}
+
+input UpdateCommentInput {
+  commentReference: ID!
+  title: String
+  _version: Int
+  postCommentsPostReference: ID
+}
+
+input DeleteCommentInput {
+  commentReference: ID!
+  _version: Int
+}
+
+input ModelSubscriptionCommentFilterInput {
+  commentReference: ModelSubscriptionIDInput
+  title: ModelSubscriptionStringInput
+  and: [ModelSubscriptionCommentFilterInput]
+  or: [ModelSubscriptionCommentFilterInput]
+  _deleted: ModelBooleanInput
+}
+
+type ModelFooConnection {
+  items: [Foo]!
+  nextToken: String
+  startedAt: AWSTimestamp
+}
+
+input ModelFooFilterInput {
+  id: ModelIDInput
+  and: [ModelFooFilterInput]
+  or: [ModelFooFilterInput]
+  not: ModelFooFilterInput
+  _deleted: ModelBooleanInput
+}
+
+input ModelFooConditionInput {
+  and: [ModelFooConditionInput]
+  or: [ModelFooConditionInput]
+  not: ModelFooConditionInput
+  _deleted: ModelBooleanInput
+}
+
+input CreateFooInput {
+  id: ID
+  _version: Int
+}
+
+input UpdateFooInput {
+  id: ID!
+  _version: Int
+}
+
+input DeleteFooInput {
+  id: ID!
+  _version: Int
+}
+
+input ModelSubscriptionFooFilterInput {
+  id: ModelSubscriptionIDInput
+  and: [ModelSubscriptionFooFilterInput]
+  or: [ModelSubscriptionFooFilterInput]
+  _deleted: ModelBooleanInput
+}
+
+type ModelBarConnection {
+  items: [Bar]!
+  nextToken: String
+  startedAt: AWSTimestamp
+}
+
+input ModelBarFilterInput {
+  id: ModelIDInput
+  and: [ModelBarFilterInput]
+  or: [ModelBarFilterInput]
+  not: ModelBarFilterInput
+  _deleted: ModelBooleanInput
+}
+
+input ModelBarConditionInput {
+  and: [ModelBarConditionInput]
+  or: [ModelBarConditionInput]
+  not: ModelBarConditionInput
+  _deleted: ModelBooleanInput
+}
+
+input CreateBarInput {
+  id: ID
+  _version: Int
+}
+
+input UpdateBarInput {
+  id: ID!
+  _version: Int
+}
+
+input DeleteBarInput {
+  id: ID!
+  _version: Int
+}
+
+input ModelSubscriptionBarFilterInput {
+  id: ModelSubscriptionIDInput
+  and: [ModelSubscriptionBarFilterInput]
+  or: [ModelSubscriptionBarFilterInput]
+  _deleted: ModelBooleanInput
+}
+
+type ModelFooBarConnection {
+  items: [FooBar]!
+  nextToken: String
+  startedAt: AWSTimestamp
+}
+
+input ModelFooBarFilterInput {
+  id: ModelIDInput
+  fooId: ModelIDInput
+  barId: ModelIDInput
+  and: [ModelFooBarFilterInput]
+  or: [ModelFooBarFilterInput]
+  not: ModelFooBarFilterInput
+  _deleted: ModelBooleanInput
+}
+
+input ModelFooBarConditionInput {
+  fooId: ModelIDInput
+  barId: ModelIDInput
+  and: [ModelFooBarConditionInput]
+  or: [ModelFooBarConditionInput]
+  not: ModelFooBarConditionInput
+  _deleted: ModelBooleanInput
+}
+
+input CreateFooBarInput {
+  id: ID
+  fooId: ID!
+  barId: ID!
+  _version: Int
+}
+
+input UpdateFooBarInput {
+  id: ID!
+  fooId: ID
+  barId: ID
+  _version: Int
+}
+
+input DeleteFooBarInput {
+  id: ID!
+  _version: Int
+}
+
+input ModelSubscriptionFooBarFilterInput {
+  id: ModelSubscriptionIDInput
+  fooId: ModelSubscriptionIDInput
+  barId: ModelSubscriptionIDInput
+  and: [ModelSubscriptionFooBarFilterInput]
+  or: [ModelSubscriptionFooBarFilterInput]
+  _deleted: ModelBooleanInput
+}
